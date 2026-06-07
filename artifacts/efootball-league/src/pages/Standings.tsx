@@ -24,19 +24,22 @@ export default function Standings() {
         const fetchedLeagues = leaguesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as League));
         setLeagues(fetchedLeagues);
 
-        const dataMap: Record<string, { teams: Team[], matches: Match[] }> = {};
+        // Fetch teams + matches for ALL leagues simultaneously
+        const results = await Promise.all(
+          fetchedLeagues.map(league =>
+            Promise.all([
+              getDocs(query(collection(db, "teams"), where("leagueId", "==", league.id))),
+              getDocs(query(collection(db, "matches"), where("leagueId", "==", league.id), where("status", "==", "approved"))),
+            ]).then(([teamsSnap, matchesSnap]) => ({
+              leagueId: league.id,
+              teams: teamsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Team)),
+              matches: matchesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Match)),
+            }))
+          )
+        );
 
-        for (const league of fetchedLeagues) {
-          const teamsQ = query(collection(db, "teams"), where("leagueId", "==", league.id));
-          const matchesQ = query(collection(db, "matches"), where("leagueId", "==", league.id), where("status", "==", "approved"));
-          
-          const [teamsSnap, matchesSnap] = await Promise.all([getDocs(teamsQ), getDocs(matchesQ)]);
-          
-          dataMap[league.id] = {
-            teams: teamsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team)),
-            matches: matchesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match)),
-          };
-        }
+        const dataMap: Record<string, { teams: Team[], matches: Match[] }> = {};
+        for (const r of results) dataMap[r.leagueId] = { teams: r.teams, matches: r.matches };
 
         setLeagueData(dataMap);
         setLoading(false);

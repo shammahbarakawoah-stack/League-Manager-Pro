@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { 
-  onAuthStateChanged, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   User as FirebaseUser
 } from "firebase/auth";
@@ -25,27 +25,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userData, setUserData] = useState<User | null>(null);
+  // loading is only true until Firebase tells us the auth state — not until Firestore resolves
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
+      setLoading(false); // unblock the UI immediately
+
       if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-          if (userDoc.exists()) {
-            setUserData(userDoc.data() as User);
-          } else {
-            setUserData(null);
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          setUserData(null);
-        }
+        // Fetch user doc in the background — does NOT block page render
+        getDoc(doc(db, "users", firebaseUser.uid))
+          .then((snap) => {
+            if (snap.exists()) setUserData(snap.data() as User);
+          })
+          .catch((err) => console.error("Error fetching user data:", err));
       } else {
         setUserData(null);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -70,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await firebaseSignOut(auth);
+    setUserData(null);
   };
 
   return (

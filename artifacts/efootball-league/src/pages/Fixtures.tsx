@@ -40,14 +40,15 @@ export default function Fixtures() {
 
     const fetchData = async () => {
       try {
-        const leaguesQ = query(collection(db, "leagues"), where("memberUids", "array-contains", userData.uid));
-        const leaguesSnap = await getDocs(leaguesQ);
-        const fetchedLeagues = leaguesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as League));
-        setLeagues(fetchedLeagues);
+        // Fetch leagues and teams in parallel — no dependency on each other
+        const [leaguesSnap, teamsSnap] = await Promise.all([
+          getDocs(query(collection(db, "leagues"), where("memberUids", "array-contains", userData.uid))),
+          getDocs(query(collection(db, "teams"), where("ownerUid", "==", userData.uid))),
+        ]);
 
-        const teamsQ = query(collection(db, "teams"), where("ownerUid", "==", userData.uid));
-        const teamsSnap = await getDocs(teamsQ);
-        const fetchedTeams = teamsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
+        const fetchedLeagues = leaguesSnap.docs.map(d => ({ id: d.id, ...d.data() } as League));
+        const fetchedTeams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Team));
+        setLeagues(fetchedLeagues);
         setUserTeams(fetchedTeams);
 
         if (fetchedLeagues.length > 0) {

@@ -23,43 +23,46 @@ export default function Dashboard() {
 
     const fetchDashboardData = async () => {
       try {
-        // Fetch teams owned by user
-        const teamsQ = query(collection(db, "teams"), where("ownerUid", "==", userData.uid));
-        const teamsSnapshot = await getDocs(teamsQ);
-        const userTeams = teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
-        setTeams(userTeams);
+        // Fetch teams and leagues in parallel — no dependency on each other
+        const [teamsSnapshot, leaguesSnapshot] = await Promise.all([
+          getDocs(query(collection(db, "teams"), where("ownerUid", "==", userData.uid))),
+          getDocs(query(collection(db, "leagues"), where("memberUids", "array-contains", userData.uid))),
+        ]);
 
-        // Fetch leagues the user is part of
-        const leaguesQ = query(collection(db, "leagues"), where("memberUids", "array-contains", userData.uid));
-        const leaguesSnapshot = await getDocs(leaguesQ);
-        const userLeagues = leaguesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as League));
+        const userTeams = teamsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Team));
+        const userLeagues = leaguesSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as League));
+        setTeams(userTeams);
         setLeagues(userLeagues);
 
         if (userLeagues.length > 0) {
           const leagueIds = userLeagues.map(l => l.id);
-          
-          // Recent approved matches
-          const recentQ = query(
-            collection(db, "matches"), 
-            where("leagueId", "in", leagueIds),
-            where("status", "==", "approved")
-            // Firestore needs compound index for this, simplified for now
-          );
-          const recentSnapshot = await getDocs(recentQ);
-          let allRecent = recentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-          allRecent.sort((a, b) => b.updatedAt - a.updatedAt);
-          setRecentMatches(allRecent.slice(0, 5));
 
-          // Upcoming scheduled matches
-          const upcomingQ = query(
-            collection(db, "matches"),
-            where("leagueId", "in", leagueIds),
-            where("status", "==", "scheduled")
-          );
-          const upcomingSnapshot = await getDocs(upcomingQ);
-          let allUpcoming = upcomingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-          allUpcoming.sort((a, b) => a.scheduledDate - b.scheduledDate);
-          setUpcomingMatches(allUpcoming.slice(0, 3));
+          // Fetch recent and upcoming matches in parallel
+          const [recentSnapshot, upcomingSnapshot] = await Promise.all([
+            getDocs(query(
+              collection(db, "matches"),
+              where("leagueId", "in", leagueIds),
+              where("status", "==", "approved"),
+            )),
+            getDocs(query(
+              collection(db, "matches"),
+              where("leagueId", "in", leagueIds),
+              where("status", "==", "scheduled"),
+            )),
+          ]);
+
+          const allRecent = recentSnapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as Match))
+            .sort((a, b) => b.updatedAt - a.updatedAt)
+            .slice(0, 5);
+
+          const allUpcoming = upcomingSnapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as Match))
+            .sort((a, b) => a.scheduledDate - b.scheduledDate)
+            .slice(0, 3);
+
+          setRecentMatches(allRecent);
+          setUpcomingMatches(allUpcoming);
         }
       } catch (error) {
         console.error("Error fetching dashboard data", error);
