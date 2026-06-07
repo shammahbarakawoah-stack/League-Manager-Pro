@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "eFootball League"
+version = "1.0.0"
+id = "artifacts/efootball-league"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21873
+
+[services.development]
+run = "pnpm --filter @workspace/efootball-league run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/efootball-league", "run", "build" ]
+publicDir = "artifacts/efootball-league/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21873"
+BASE_PATH = "/"
