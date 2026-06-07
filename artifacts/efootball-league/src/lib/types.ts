@@ -15,6 +15,7 @@ export interface League {
   createdAt: number;
   status: "active" | "completed";
   memberUids: string[];
+  joinCode: string;
 }
 
 export interface Team {
