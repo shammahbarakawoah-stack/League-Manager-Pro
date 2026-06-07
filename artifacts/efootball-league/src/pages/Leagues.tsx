@@ -23,7 +23,7 @@ const leagueSchema = z.object({
 });
 
 export default function Leagues() {
-  const { userData } = useAuth();
+  const { user, userData } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -37,7 +37,7 @@ export default function Leagues() {
   useEffect(() => {
     const q = query(collection(db, "leagues"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedLeagues = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as League));
+      const fetchedLeagues = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as League));
       setLeagues(fetchedLeagues);
       setLoading(false);
     });
@@ -46,15 +46,15 @@ export default function Leagues() {
   }, []);
 
   async function onSubmit(values: z.infer<typeof leagueSchema>) {
-    if (!userData) return;
+    if (!user) return;
     try {
       await addDoc(collection(db, "leagues"), {
         name: values.name,
         description: values.description,
-        adminUid: userData.uid,
+        adminUid: user.uid,
         createdAt: Date.now(),
         status: "active",
-        memberUids: [userData.uid]
+        memberUids: [user.uid]
       });
       setIsCreateOpen(false);
       form.reset();
@@ -65,11 +65,11 @@ export default function Leagues() {
   }
 
   async function handleJoinLeague(leagueId: string) {
-    if (!userData) return;
+    if (!user) return;
     try {
       const leagueRef = doc(db, "leagues", leagueId);
       await updateDoc(leagueRef, {
-        memberUids: arrayUnion(userData.uid)
+        memberUids: arrayUnion(user.uid)
       });
       toast({ title: "Joined league successfully!" });
     } catch (error: any) {
@@ -84,7 +84,7 @@ export default function Leagues() {
           <h1 className="text-3xl font-bold tracking-tight">Leagues</h1>
           <p className="text-muted-foreground mt-1">Browse, join, or create competitions.</p>
         </div>
-        
+
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -153,8 +153,8 @@ export default function Leagues() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {leagues.map(league => {
-            const isMember = userData && league.memberUids?.includes(userData.uid);
-            
+            const isMember = user && league.memberUids?.includes(user.uid);
+
             return (
               <Card key={league.id} className="bg-card/50 border-border/50 hover:border-primary/50 transition-colors flex flex-col">
                 <CardHeader>

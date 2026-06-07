@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, getDocs, doc, updateDoc } from "firebase/firestore";
 import { League, Match, Team } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ const resultSchema = z.object({
 });
 
 export default function Fixtures() {
-  const { userData } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [userTeams, setUserTeams] = useState<Team[]>([]);
@@ -36,14 +36,13 @@ export default function Fixtures() {
   });
 
   useEffect(() => {
-    if (!userData) return;
+    if (!user) return;
 
     const fetchData = async () => {
       try {
-        // Fetch leagues and teams in parallel — no dependency on each other
         const [leaguesSnap, teamsSnap] = await Promise.all([
-          getDocs(query(collection(db, "leagues"), where("memberUids", "array-contains", userData.uid))),
-          getDocs(query(collection(db, "teams"), where("ownerUid", "==", userData.uid))),
+          getDocs(query(collection(db, "leagues"), where("memberUids", "array-contains", user.uid))),
+          getDocs(query(collection(db, "teams"), where("ownerUid", "==", user.uid))),
         ]);
 
         const fetchedLeagues = leaguesSnap.docs.map(d => ({ id: d.id, ...d.data() } as League));
@@ -58,14 +57,14 @@ export default function Fixtures() {
             where("leagueId", "in", leagueIds),
             where("status", "==", "scheduled")
           );
-          
+
           const unsubscribe = onSnapshot(matchesQ, (snapshot) => {
-            const fetchedMatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-            fetchedMatches.sort((a,b) => a.scheduledDate - b.scheduledDate);
+            const fetchedMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
+            fetchedMatches.sort((a, b) => a.scheduledDate - b.scheduledDate);
             setMatches(fetchedMatches);
             setLoading(false);
           });
-          
+
           return unsubscribe;
         } else {
           setLoading(false);
@@ -78,10 +77,10 @@ export default function Fixtures() {
 
     const unsub = fetchData();
     return () => { unsub && unsub.then(f => f && f()); };
-  }, [userData]);
+  }, [user]);
 
   const onSubmitResult = async (values: z.infer<typeof resultSchema>) => {
-    if (!selectedMatch || !userData) return;
+    if (!selectedMatch || !user) return;
 
     try {
       const matchRef = doc(db, "matches", selectedMatch.id);
@@ -89,10 +88,10 @@ export default function Fixtures() {
         homeScore: values.homeScore,
         awayScore: values.awayScore,
         status: "pending_approval",
-        submittedByUid: userData.uid,
+        submittedByUid: user.uid,
         updatedAt: Date.now()
       });
-      
+
       setSelectedMatch(null);
       form.reset();
       toast({ title: "Result submitted", description: "Waiting for admin approval." });
@@ -106,7 +105,7 @@ export default function Fixtures() {
       <div className="container mx-auto p-4 md:p-8 space-y-6">
         <Skeleton className="h-10 w-48" />
         <div className="grid gap-4 md:grid-cols-2">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-32" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
         </div>
       </div>
     );
@@ -152,10 +151,10 @@ export default function Fixtures() {
                     <div className="px-4 text-xs font-mono text-muted-foreground">VS</div>
                     <div className="flex-1 font-semibold">{match.awayTeamName}</div>
                   </div>
-                  
+
                   {isUserMatch && (
-                    <Button 
-                      className="w-full mt-4" 
+                    <Button
+                      className="w-full mt-4"
                       onClick={() => { setSelectedMatch(match); form.reset(); }}
                     >
                       Submit Result

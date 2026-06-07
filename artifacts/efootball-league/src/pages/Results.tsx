@@ -9,19 +9,20 @@ import { format } from "date-fns";
 import { CheckCircle2, Calendar } from "lucide-react";
 
 export default function Results() {
-  const { userData } = useAuth();
+  const { user } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userData) return;
+    if (!user) return;
 
     const fetchData = async () => {
       try {
-        const leaguesQ = query(collection(db, "leagues"), where("memberUids", "array-contains", userData.uid));
-        const leaguesSnap = await getDocs(leaguesQ);
-        const fetchedLeagues = leaguesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as League));
+        const leaguesSnap = await getDocs(
+          query(collection(db, "leagues"), where("memberUids", "array-contains", user.uid))
+        );
+        const fetchedLeagues = leaguesSnap.docs.map(d => ({ id: d.id, ...d.data() } as League));
         setLeagues(fetchedLeagues);
 
         if (fetchedLeagues.length > 0) {
@@ -31,14 +32,14 @@ export default function Results() {
             where("leagueId", "in", leagueIds),
             where("status", "==", "approved")
           );
-          
+
           const unsubscribe = onSnapshot(matchesQ, (snapshot) => {
-            const fetchedMatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-            fetchedMatches.sort((a,b) => b.updatedAt - a.updatedAt);
+            const fetchedMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
+            fetchedMatches.sort((a, b) => b.updatedAt - a.updatedAt);
             setMatches(fetchedMatches);
             setLoading(false);
           });
-          
+
           return unsubscribe;
         } else {
           setLoading(false);
@@ -51,14 +52,14 @@ export default function Results() {
 
     const unsub = fetchData();
     return () => { unsub && unsub.then(f => f && f()); };
-  }, [userData]);
+  }, [user]);
 
   if (loading) {
     return (
       <div className="container mx-auto p-4 md:p-8 space-y-6">
         <Skeleton className="h-10 w-48" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-32" />)}
+          {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-32" />)}
         </div>
       </div>
     );

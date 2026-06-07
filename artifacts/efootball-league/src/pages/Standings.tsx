@@ -3,28 +3,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { League, Team, Match } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StandingsTable } from "@/components/StandingsTable";
 import { Trophy } from "lucide-react";
 
 export default function Standings() {
-  const { userData } = useAuth();
+  const { user } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [leagueData, setLeagueData] = useState<Record<string, { teams: Team[], matches: Match[] }>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userData) return;
+    if (!user) return;
 
     const fetchData = async () => {
       try {
-        const leaguesQ = query(collection(db, "leagues"), where("memberUids", "array-contains", userData.uid));
-        const leaguesSnap = await getDocs(leaguesQ);
-        const fetchedLeagues = leaguesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as League));
+        const leaguesSnap = await getDocs(
+          query(collection(db, "leagues"), where("memberUids", "array-contains", user.uid))
+        );
+        const fetchedLeagues = leaguesSnap.docs.map(d => ({ id: d.id, ...d.data() } as League));
         setLeagues(fetchedLeagues);
 
-        // Fetch teams + matches for ALL leagues simultaneously
         const results = await Promise.all(
           fetchedLeagues.map(league =>
             Promise.all([
@@ -50,7 +50,7 @@ export default function Standings() {
     };
 
     fetchData();
-  }, [userData]);
+  }, [user]);
 
   if (loading) {
     return (

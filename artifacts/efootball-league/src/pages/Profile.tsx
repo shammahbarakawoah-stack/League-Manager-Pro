@@ -20,52 +20,58 @@ const profileSchema = z.object({
 });
 
 export default function Profile() {
-  const { userData } = useAuth();
+  const { user, userData } = useAuth();
   const { toast } = useToast();
   const [teams, setTeams] = useState<Team[]>([]);
   const [stats, setStats] = useState({ matches: 0, wins: 0, goals: 0 });
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const displayName = userData?.displayName || user?.displayName || "";
+
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { displayName: userData?.displayName || "" },
+    defaultValues: { displayName },
   });
 
+  // Reset form when displayName becomes available
   useEffect(() => {
-    if (!userData) return;
+    if (displayName) form.reset({ displayName });
+  }, [displayName]);
 
-    form.reset({ displayName: userData.displayName });
+  useEffect(() => {
+    if (!user) return;
 
     const fetchData = async () => {
       try {
-        const teamsQ = query(collection(db, "teams"), where("ownerUid", "==", userData.uid));
-        const teamsSnap = await getDocs(teamsQ);
-        const fetchedTeams = teamsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
+        const teamsSnap = await getDocs(
+          query(collection(db, "teams"), where("ownerUid", "==", user.uid))
+        );
+        const fetchedTeams = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Team));
         setTeams(fetchedTeams);
 
         if (fetchedTeams.length > 0) {
-          let totalMatches = 0;
-          let totalWins = 0;
-          let totalGoals = 0;
+          // Fetch home and away matches for all teams in parallel
+          const matchPairs = await Promise.all(
+            fetchedTeams.map(team =>
+              Promise.all([
+                getDocs(query(collection(db, "matches"), where("homeTeamId", "==", team.id), where("status", "==", "approved"))),
+                getDocs(query(collection(db, "matches"), where("awayTeamId", "==", team.id), where("status", "==", "approved"))),
+              ])
+            )
+          );
 
-          for (const team of fetchedTeams) {
-            // Need to query matches where team is home OR away. Firestore doesn't support OR well directly here,
-            // so we do two queries.
-            const homeQ = query(collection(db, "matches"), where("homeTeamId", "==", team.id), where("status", "==", "approved"));
-            const awayQ = query(collection(db, "matches"), where("awayTeamId", "==", team.id), where("status", "==", "approved"));
-            
-            const [homeSnap, awaySnap] = await Promise.all([getDocs(homeQ), getDocs(awayQ)]);
-            
-            homeSnap.docs.forEach(doc => {
-              const m = doc.data() as Match;
+          let totalMatches = 0, totalWins = 0, totalGoals = 0;
+
+          for (const [homeSnap, awaySnap] of matchPairs) {
+            homeSnap.docs.forEach(d => {
+              const m = d.data() as Match;
               totalMatches++;
               totalGoals += (m.homeScore || 0);
               if (m.homeScore! > m.awayScore!) totalWins++;
             });
-
-            awaySnap.docs.forEach(doc => {
-              const m = doc.data() as Match;
+            awaySnap.docs.forEach(d => {
+              const m = d.data() as Match;
               totalMatches++;
               totalGoals += (m.awayScore || 0);
               if (m.awayScore! > m.homeScore!) totalWins++;
@@ -82,13 +88,13 @@ export default function Profile() {
     };
 
     fetchData();
-  }, [userData, form]);
+  }, [user]);
 
   const onSubmit = async (values: z.infer<typeof profileSchema>) => {
-    if (!userData) return;
+    if (!user) return;
     try {
       setIsUpdating(true);
-      await updateDoc(doc(db, "users", userData.uid), {
+      await updateDoc(doc(db, "users", user.uid), {
         displayName: values.displayName
       });
       toast({ title: "Profile updated successfully" });
@@ -99,8 +105,6 @@ export default function Profile() {
     }
   };
 
-  if (!userData) return null;
-
   if (loading) {
     return (
       <div className="container mx-auto p-4 md:p-8 space-y-6">
@@ -110,16 +114,18 @@ export default function Profile() {
     );
   }
 
+  const initials = displayName.substring(0, 2).toUpperCase() || "??";
+
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-4xl space-y-6">
       <div className="flex items-center gap-6 mb-8">
         <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-          <AvatarImage src={userData.photoURL} />
-          <AvatarFallback className="text-3xl">{userData.displayName.substring(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarImage src={userData?.photoURL} />
+          <AvatarFallback className="text-3xl">{initials}</AvatarFallback>
         </Avatar>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{userData.displayName}</h1>
-          <p className="text-muted-foreground">{userData.email}</p>
+          <h1 className="text-3xl font-bold tracking-tight">{displayName || "Manager"}</h1>
+          <p className="text-muted-foreground">{userData?.email || user?.email}</p>
         </div>
       </div>
 

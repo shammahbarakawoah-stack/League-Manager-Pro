@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { League, Team, Match } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 
 export default function Dashboard() {
-  const { userData } = useAuth();
+  const { user, userData } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [recentMatches, setRecentMatches] = useState<Match[]>([]);
@@ -19,14 +19,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userData) return;
+    if (!user) return;
 
     const fetchDashboardData = async () => {
       try {
-        // Fetch teams and leagues in parallel — no dependency on each other
         const [teamsSnapshot, leaguesSnapshot] = await Promise.all([
-          getDocs(query(collection(db, "teams"), where("ownerUid", "==", userData.uid))),
-          getDocs(query(collection(db, "leagues"), where("memberUids", "array-contains", userData.uid))),
+          getDocs(query(collection(db, "teams"), where("ownerUid", "==", user.uid))),
+          getDocs(query(collection(db, "leagues"), where("memberUids", "array-contains", user.uid))),
         ]);
 
         const userTeams = teamsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Team));
@@ -37,7 +36,6 @@ export default function Dashboard() {
         if (userLeagues.length > 0) {
           const leagueIds = userLeagues.map(l => l.id);
 
-          // Fetch recent and upcoming matches in parallel
           const [recentSnapshot, upcomingSnapshot] = await Promise.all([
             getDocs(query(
               collection(db, "matches"),
@@ -72,7 +70,7 @@ export default function Dashboard() {
     };
 
     fetchDashboardData();
-  }, [userData]);
+  }, [user]);
 
   if (loading) {
     return (
@@ -91,7 +89,9 @@ export default function Dashboard() {
     <div className="container mx-auto p-4 md:p-8 space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome, {userData?.displayName}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome, {userData?.displayName || user?.displayName || "Manager"}
+          </h1>
           <p className="text-muted-foreground mt-1">Here's what's happening across your leagues.</p>
         </div>
         <div className="flex gap-2">
