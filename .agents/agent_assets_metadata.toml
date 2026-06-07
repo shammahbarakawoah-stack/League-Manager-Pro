@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "OQ7_k1fz7f00IkEbzBzPB"
+uri = "file://efootball-league.tar.gz"
+type = "unspecified"
+title = "eFootball League — Full Project"
