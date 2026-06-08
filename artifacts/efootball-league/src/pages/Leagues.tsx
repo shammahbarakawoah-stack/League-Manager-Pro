@@ -217,7 +217,7 @@ export default function Leagues() {
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {leagues.map(league => {
+          {leagues.filter(l => (l.memberUids?.length ?? 0) > 0).map(league => {
             const isMember = user && league.memberUids?.includes(user.uid);
             const isAdmin = user && league.adminUid === user.uid;
 

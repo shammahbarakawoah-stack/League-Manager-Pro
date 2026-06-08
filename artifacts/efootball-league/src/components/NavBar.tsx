@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, Menu, Trophy, ShieldAlert, User, Home, Calendar, ListChecks, Medal } from "lucide-react";
+import { LogOut, Menu, Trophy, ShieldAlert, User, Home, Calendar, ListChecks, Medal, Shield } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,10 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useState } from "react";
 
 export function NavBar() {
   const { userData, isAdmin, signOut } = useAuth();
   const [location] = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const links = [
     { href: "/", label: "Dashboard", icon: Home },
@@ -23,6 +25,7 @@ export function NavBar() {
     { href: "/fixtures", label: "Fixtures", icon: Calendar },
     { href: "/results", label: "Results", icon: ListChecks },
     { href: "/standings", label: "Standings", icon: Medal },
+    { href: "/profile", label: "My Teams", icon: Shield },
   ];
 
   if (isAdmin) {
@@ -30,6 +33,7 @@ export function NavBar() {
   }
 
   const handleSignOut = async () => {
+    setMobileOpen(false);
     await signOut();
   };
 
@@ -82,16 +86,14 @@ export function NavBar() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{userData.displayName}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {userData.email}
-                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">{userData.email}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="cursor-pointer w-full flex items-center">
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                    <span>Profile & My Teams</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -104,30 +106,44 @@ export function NavBar() {
           ) : null}
 
           {/* Mobile Nav */}
-          <Sheet>
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+            <SheetContent side="left" className="w-[300px] sm:w-[400px] flex flex-col">
               <div className="flex items-center gap-2 mb-8">
                 <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
                   <Trophy className="h-5 w-5" />
                 </div>
-                <span className="font-bold tracking-tight text-foreground">
-                  eFootball League
-                </span>
+                <span className="font-bold tracking-tight text-foreground">eFootball League</span>
               </div>
-              <nav className="flex flex-col gap-2">
+
+              {/* User info */}
+              {userData && (
+                <div className="flex items-center gap-3 mb-6 p-3 rounded-lg bg-muted/40 border border-border/50">
+                  <Avatar className="h-10 w-10 border border-border">
+                    <AvatarImage src={userData.photoURL} />
+                    <AvatarFallback>{getInitials(userData.displayName)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{userData.displayName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{userData.email}</p>
+                  </div>
+                </div>
+              )}
+
+              <nav className="flex flex-col gap-1 flex-1">
                 {links.map((link) => {
                   const Icon = link.icon;
                   return (
                     <Link
                       key={link.href}
                       href={link.href}
-                      className={`flex items-center gap-3 rounded-md px-3 py-2 text-base transition-colors hover:bg-accent hover:text-accent-foreground ${
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-base transition-colors hover:bg-accent hover:text-accent-foreground ${
                         location === link.href ? "bg-accent text-accent-foreground font-semibold" : "text-muted-foreground"
                       }`}
                     >
@@ -137,6 +153,17 @@ export function NavBar() {
                   );
                 })}
               </nav>
+
+              {/* Logout at the bottom */}
+              <div className="mt-auto pt-4 border-t border-border">
+                <button
+                  onClick={handleSignOut}
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-base text-destructive transition-colors hover:bg-destructive/10"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Log out
+                </button>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
