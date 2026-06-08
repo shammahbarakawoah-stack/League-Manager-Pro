@@ -23,7 +23,8 @@ export interface Team {
   name: string;
   leagueId: string;
   ownerUid: string;
-  logoURL?: string;
+  logoURL?: string | null;
+  squad?: string[];
   createdAt: number;
 }
 
@@ -34,12 +35,16 @@ export interface Match {
   awayTeamId: string;
   homeTeamName: string;
   awayTeamName: string;
-  scheduledDate: number; // Storing as timestamp for easier manipulation
+  scheduledDate: number;
   status: "scheduled" | "pending_approval" | "approved" | "rejected";
   submittedByUid?: string;
   homeScore?: number;
   awayScore?: number;
+  scorers?: string[];
+  assists?: string[];
   resultNotes?: string;
+  leg?: 1 | 2;
+  matchday?: number;
   createdAt: number;
   updatedAt: number;
 }

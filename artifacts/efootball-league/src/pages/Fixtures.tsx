@@ -7,19 +7,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Calendar } from "lucide-react";
-
-const resultSchema = z.object({
-  homeScore: z.coerce.number().min(0),
-  awayScore: z.coerce.number().min(0),
-});
+import { Calendar, Badge as BadgeIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export default function Fixtures() {
   const { user } = useAuth();
@@ -30,10 +23,12 @@ export default function Fixtures() {
   const [loading, setLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
-  const form = useForm<z.infer<typeof resultSchema>>({
-    resolver: zodResolver(resultSchema),
-    defaultValues: { homeScore: 0, awayScore: 0 },
-  });
+  // Result form state
+  const [homeScore, setHomeScore] = useState("0");
+  const [awayScore, setAwayScore] = useState("0");
+  const [scorers, setScorers] = useState("");
+  const [assists, setAssists] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -79,24 +74,43 @@ export default function Fixtures() {
     return () => { unsub && unsub.then(f => f && f()); };
   }, [user]);
 
-  const onSubmitResult = async (values: z.infer<typeof resultSchema>) => {
-    if (!selectedMatch || !user) return;
+  const openSubmit = (match: Match) => {
+    setSelectedMatch(match);
+    setHomeScore("0");
+    setAwayScore("0");
+    setScorers("");
+    setAssists("");
+  };
 
+  const onSubmitResult = async () => {
+    if (!selectedMatch || !user) return;
+    const hs = parseInt(homeScore, 10);
+    const as_ = parseInt(awayScore, 10);
+    if (isNaN(hs) || isNaN(as_) || hs < 0 || as_ < 0) {
+      toast({ title: "Enter valid scores", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
     try {
-      const matchRef = doc(db, "matches", selectedMatch.id);
-      await updateDoc(matchRef, {
-        homeScore: values.homeScore,
-        awayScore: values.awayScore,
+      const scorerList = scorers.split(",").map(s => s.trim()).filter(Boolean);
+      const assistList = assists.split(",").map(s => s.trim()).filter(Boolean);
+
+      await updateDoc(doc(db, "matches", selectedMatch.id), {
+        homeScore: hs,
+        awayScore: as_,
+        scorers: scorerList,
+        assists: assistList,
         status: "pending_approval",
         submittedByUid: user.uid,
         updatedAt: Date.now()
       });
 
       setSelectedMatch(null);
-      form.reset();
       toast({ title: "Result submitted", description: "Waiting for admin approval." });
     } catch (error: any) {
       toast({ title: "Error submitting result", description: error.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -111,9 +125,17 @@ export default function Fixtures() {
     );
   }
 
+  // Group by matchday
+  const byMatchday: Record<string, Match[]> = {};
+  matches.forEach(m => {
+    const key = m.matchday != null ? String(m.matchday) : "0";
+    if (!byMatchday[key]) byMatchday[key] = [];
+    byMatchday[key].push(m);
+  });
+
   return (
     <div className="container mx-auto p-4 md:p-8 space-y-6">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Upcoming Fixtures</h1>
         <p className="text-muted-foreground mt-1">Scheduled matches across all your leagues.</p>
       </div>
@@ -123,101 +145,117 @@ export default function Fixtures() {
           <CardContent className="flex flex-col items-center justify-center p-12 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
             <h3 className="text-lg font-semibold">No Fixtures</h3>
-            <p className="text-sm text-muted-foreground mt-2">
-              There are no scheduled matches in your leagues at the moment.
-            </p>
+            <p className="text-sm text-muted-foreground mt-2">No scheduled matches in your leagues yet.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {matches.map(match => {
-            const league = leagues.find(l => l.id === match.leagueId);
-            const isUserMatch = userTeams.some(t => t.id === match.homeTeamId || t.id === match.awayTeamId);
-
-            return (
-              <Card key={match.id} className="bg-card/50 hover:bg-card/80 transition-colors">
-                <CardHeader className="pb-3 pt-4 px-4 border-b border-border/50">
-                  <div className="flex justify-between items-center text-xs text-muted-foreground font-medium">
-                    <span className="truncate pr-2 text-primary">{league?.name}</span>
-                    <span className="flex items-center gap-1 whitespace-nowrap">
-                      <Calendar className="h-3 w-3" />
-                      {format(new Date(match.scheduledDate), "MMM d, HH:mm")}
+        <div className="space-y-8">
+          {Object.entries(byMatchday)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([matchday, dayMatches]) => {
+              const league = leagues.find(l => l.id === dayMatches[0].leagueId);
+              return (
+                <div key={matchday} className="space-y-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {Number(matchday) > 0 && (
+                      <Badge variant="outline" className="font-mono">
+                        Matchday {matchday}{dayMatches[0].leg ? ` · Leg ${dayMatches[0].leg}` : ""}
+                      </Badge>
+                    )}
+                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {format(new Date(dayMatches[0].scheduledDate), "EEEE d MMMM yyyy")}
                     </span>
+                    {league && <span className="text-xs text-primary font-medium">{league.name}</span>}
                   </div>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between py-2">
-                    <div className="flex-1 font-semibold text-right">{match.homeTeamName}</div>
-                    <div className="px-4 text-xs font-mono text-muted-foreground">VS</div>
-                    <div className="flex-1 font-semibold">{match.awayTeamName}</div>
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {dayMatches.map(match => {
+                      const isUserMatch = userTeams.some(t => t.id === match.homeTeamId || t.id === match.awayTeamId);
+                      return (
+                        <Card key={match.id} className="bg-card/50 hover:bg-card/80 transition-colors">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between gap-2 py-1">
+                              <div className="flex-1 font-semibold text-right text-sm truncate">{match.homeTeamName}</div>
+                              <div className="text-xs font-mono text-muted-foreground px-2 shrink-0">VS</div>
+                              <div className="flex-1 font-semibold text-sm truncate">{match.awayTeamName}</div>
+                            </div>
+                            {isUserMatch && (
+                              <Button className="w-full mt-3 h-8 text-xs" onClick={() => openSubmit(match)}>
+                                Submit Result
+                              </Button>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
-
-                  {isUserMatch && (
-                    <Button
-                      className="w-full mt-4"
-                      onClick={() => { setSelectedMatch(match); form.reset(); }}
-                    >
-                      Submit Result
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                </div>
+              );
+            })}
         </div>
       )}
 
-      <Dialog open={!!selectedMatch} onOpenChange={(open) => !open && setSelectedMatch(null)}>
-        <DialogContent>
+      {/* Result submission dialog */}
+      <Dialog open={!!selectedMatch} onOpenChange={open => !open && setSelectedMatch(null)}>
+        <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle>Submit Match Result</DialogTitle>
             <DialogDescription>
-              Enter the final score for {selectedMatch?.homeTeamName} vs {selectedMatch?.awayTeamName}
+              {selectedMatch?.homeTeamName} vs {selectedMatch?.awayTeamName}
             </DialogDescription>
           </DialogHeader>
-          {selectedMatch && (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmitResult)} className="space-y-6 pt-4">
-                <div className="flex items-center gap-4">
-                  <FormField
-                    control={form.control}
-                    name="homeScore"
-                    render={({ field }) => (
-                      <FormItem className="flex-1 text-center">
-                        <FormLabel className="text-sm font-semibold truncate block">
-                          {selectedMatch.homeTeamName} (Home)
-                        </FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" className="text-center text-2xl font-mono h-14" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="font-bold text-xl pt-6">-</div>
-                  <FormField
-                    control={form.control}
-                    name="awayScore"
-                    render={({ field }) => (
-                      <FormItem className="flex-1 text-center">
-                        <FormLabel className="text-sm font-semibold truncate block">
-                          {selectedMatch.awayTeamName} (Away)
-                        </FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" className="text-center text-2xl font-mono h-14" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setSelectedMatch(null)}>Cancel</Button>
-                  <Button type="submit">Submit for Approval</Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          )}
+
+          <div className="space-y-5 pt-2">
+            {/* Scores */}
+            <div className="flex items-end gap-3">
+              <div className="flex-1 space-y-1 text-center">
+                <Label className="text-xs truncate block">{selectedMatch?.homeTeamName}</Label>
+                <Input
+                  type="number" min="0" value={homeScore}
+                  onChange={e => setHomeScore(e.target.value)}
+                  className="text-center text-2xl font-mono h-14"
+                />
+              </div>
+              <div className="pb-3 font-bold text-xl text-muted-foreground shrink-0">-</div>
+              <div className="flex-1 space-y-1 text-center">
+                <Label className="text-xs truncate block">{selectedMatch?.awayTeamName}</Label>
+                <Input
+                  type="number" min="0" value={awayScore}
+                  onChange={e => setAwayScore(e.target.value)}
+                  className="text-center text-2xl font-mono h-14"
+                />
+              </div>
+            </div>
+
+            {/* Scorers */}
+            <div className="space-y-1.5">
+              <Label htmlFor="scorers" className="text-sm">Goal Scorers <span className="text-muted-foreground font-normal">(optional, comma-separated)</span></Label>
+              <Input
+                id="scorers"
+                placeholder="e.g. Ronaldo, Messi, Neymar"
+                value={scorers}
+                onChange={e => setScorers(e.target.value)}
+              />
+            </div>
+
+            {/* Assists */}
+            <div className="space-y-1.5">
+              <Label htmlFor="assists" className="text-sm">Assists <span className="text-muted-foreground font-normal">(optional, comma-separated)</span></Label>
+              <Input
+                id="assists"
+                placeholder="e.g. Modric, De Bruyne"
+                value={assists}
+                onChange={e => setAssists(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 pt-2">
+            <Button variant="outline" onClick={() => setSelectedMatch(null)}>Cancel</Button>
+            <Button onClick={onSubmitResult} disabled={submitting}>
+              {submitting ? "Submitting…" : "Submit for Approval"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
