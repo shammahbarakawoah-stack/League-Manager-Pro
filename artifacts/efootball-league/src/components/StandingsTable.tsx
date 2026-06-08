@@ -97,7 +97,7 @@ export function StandingsTable({ teams, matches }: StandingsTableProps) {
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6 border border-border flex-shrink-0">
                         <AvatarImage src={team.logoURL ?? undefined} />
-                        <AvatarFallback className="text-[10px]">{team.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className="text-[10px]">{(team.name ?? "??").substring(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <span className="font-semibold truncate">{team.name}</span>
                     </div>

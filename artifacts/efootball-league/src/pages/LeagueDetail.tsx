@@ -589,7 +589,7 @@ export default function LeagueDetail() {
                 <Card key={team.id} className="bg-card/50">
                   <CardContent className="flex flex-col items-center gap-2 p-5">
                     <Avatar className="h-16 w-16 rounded-xl border-2 border-border">
-                      <AvatarFallback className="rounded-xl text-xl font-bold">{team.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="rounded-xl text-xl font-bold">{(team.name ?? "??").substring(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <span className="font-semibold text-center">{team.name}</span>
                     {team.squad?.length ? <span className="text-xs text-muted-foreground">{team.squad.length} players</span> : null}

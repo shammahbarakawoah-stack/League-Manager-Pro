@@ -134,7 +134,7 @@ export default function Profile() {
     );
   }
 
-  const initials = displayName.substring(0, 2).toUpperCase() || "??";
+  const initials = (displayName ?? "").substring(0, 2).toUpperCase() || "??";
 
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-4xl space-y-6">
@@ -210,7 +210,7 @@ export default function Profile() {
                   <div key={team.id} className="flex items-center gap-4 p-4 rounded-lg border border-border/50 bg-background/50 hover:bg-accent/20 transition-colors">
                     <Avatar className="h-12 w-12 rounded-xl border-2 border-border flex-shrink-0">
                       <AvatarFallback className="rounded-xl font-bold text-sm bg-primary/10 text-primary">
-                        {team.name.substring(0, 2).toUpperCase()}
+                        {(team.name ?? "??").substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
