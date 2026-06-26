@@ -1,6 +1,6 @@
 {
   "buildCommand": "pnpm --filter @workspace/efootball-league run build",
-  "outputDirectory": "artifacts/efootball-league/dist/public",
+  "outputDirectory": "artifacts/efootball-league/dist",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
   "rewrites": [
