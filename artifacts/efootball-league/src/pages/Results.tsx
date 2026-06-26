@@ -17,6 +17,7 @@ export default function Results() {
   useEffect(() => {
     if (!user) return;
 
+    let unsubMatches: (() => void) | undefined;
     const fetchData = async () => {
       try {
         const leaguesSnap = await getDocs(
@@ -32,15 +33,12 @@ export default function Results() {
             where("leagueId", "in", leagueIds),
             where("status", "==", "approved")
           );
-
-          const unsubscribe = onSnapshot(matchesQ, (snapshot) => {
+          unsubMatches = onSnapshot(matchesQ, (snapshot) => {
             const fetchedMatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
             fetchedMatches.sort((a, b) => b.updatedAt - a.updatedAt);
             setMatches(fetchedMatches);
             setLoading(false);
           });
-
-          return unsubscribe;
         } else {
           setLoading(false);
         }
@@ -49,9 +47,8 @@ export default function Results() {
         setLoading(false);
       }
     };
-
-    const unsub = fetchData();
-    return () => { unsub && unsub.then(f => f && f()); };
+    fetchData();
+    return () => { unsubMatches?.(); };
   }, [user]);
 
   if (loading) {

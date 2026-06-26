@@ -16,6 +16,10 @@ export interface League {
   status: "active" | "completed";
   memberUids: string[];
   joinCode: string;
+  requiresPayment?: boolean;
+  entryFee?: number;
+  maxMembers?: number;
+  registrationDeadline?: number;
 }
 
 export interface Team {
@@ -28,6 +32,15 @@ export interface Team {
   createdAt: number;
 }
 
+export interface MatchSubmission {
+  uid: string;
+  homeScore: number;
+  awayScore: number;
+  scorers: string[];
+  assists: string[];
+  submittedAt: number;
+}
+
 export interface Match {
   id: string;
   leagueId: string;
@@ -36,7 +49,7 @@ export interface Match {
   homeTeamName: string;
   awayTeamName: string;
   scheduledDate: number;
-  status: "scheduled" | "pending_approval" | "approved" | "rejected";
+  status: "scheduled" | "pending_approval" | "disputed" | "approved" | "rejected";
   submittedByUid?: string;
   homeScore?: number;
   awayScore?: number;
@@ -45,6 +58,36 @@ export interface Match {
   resultNotes?: string;
   leg?: 1 | 2;
   matchday?: number;
+  homeSubmission?: MatchSubmission;
+  awaySubmission?: MatchSubmission;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface Payment {
+  id: string;
+  leagueId: string;
+  leagueName?: string;
+  uid: string;
+  displayName: string;
+  transactionCode: string;
+  phoneNumber: string;
+  amount: number;
+  status: "pending" | "approved" | "rejected" | "resubmit";
+  adminNote?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AppNotification {
+  id: string;
+  uid: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  leagueId?: string;
+  matchId?: string;
+  paymentId?: string;
+  createdAt: number;
 }

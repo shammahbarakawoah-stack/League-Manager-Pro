@@ -1,0 +1,208 @@
+Continue developing the existing EFootball League project.
+
+IMPORTANT:
+
+* Do NOT rebuild the project.
+* Do NOT replace existing pages.
+* Do NOT remove working functionality.
+* Audit the current codebase first and only implement the missing or incomplete features listed below.
+* Preserve the existing project structure, UI, routing, and Firebase configuration.
+
+==================================================
+
+1. COMPLETE THE PAYMENT SYSTEM
+    ==================================================
+
+Implement a complete M-Pesa payment verification workflow.
+
+Payment Details:
+
+Business Number:
+400200
+
+Account Number:
+01102884553001
+
+Requirements:
+
+* Display payment instructions before joining a league.
+* Players must pay before becoming active.
+* Allow players to upload payment confirmation screenshots.
+* Allow players to enter:
+    * M-Pesa Transaction Code
+    * Sender Phone Number
+    * Amount Paid
+* Save payment as Pending.
+* Notify League Admin.
+* Admin can:
+    * Approve Payment
+    * Reject Payment
+    * Request Resubmission
+* Display payment status:
+    * Pending
+    * Approved
+    * Rejected
+* Players cannot participate in fixtures until payment is approved.
+
+==================================================
+2. COMPLETE JOIN LEAGUE
+
+Improve the existing Join League system.
+
+Requirements:
+
+* Generate unique League Codes automatically.
+* Allow copying the league code.
+* Allow sharing the league code.
+* Validate the code before joining.
+* Prevent duplicate joins.
+* Prevent joining after registration closes.
+* Display:
+    * Registered teams
+    * Remaining slots
+    * Registration deadline
+
+==================================================
+3. COMPLETE MATCH RESULT WORKFLOW
+
+Improve the existing results system.
+
+Players submit:
+
+* Goals scored
+* Goals conceded
+* Screenshot evidence
+
+If both players submit matching scores:
+
+* Automatically approve.
+* Update standings.
+* Update statistics.
+
+If results differ:
+
+* Create dispute.
+* Notify Admin.
+* Allow Admin review.
+* Resolve dispute.
+
+==================================================
+4. COMPLETE ADMIN DASHBOARD
+
+Finish missing Admin functionality.
+
+Admins should be able to:
+
+* Verify payments.
+* Manage players.
+* Manage teams.
+* Manage leagues.
+* Manage seasons.
+* Resolve disputes.
+* Generate fixtures.
+* Regenerate fixtures.
+* Publish announcements.
+* View league analytics.
+
+==================================================
+5. COMPLETE PLAYER DASHBOARD
+
+Display:
+
+* Player profile.
+* Team information.
+* League information.
+* Statistics.
+* Fixtures.
+* Results.
+* Payment status.
+* Trophy history.
+* Season history.
+* Notification centre.
+
+==================================================
+6. NOTIFICATION SYSTEM
+
+Implement notifications for:
+
+* Payment approved.
+* Payment rejected.
+* New fixture.
+* Fixture reminder.
+* Match reminder.
+* League announcements.
+* Registration closing.
+* Season starting.
+* Dispute updates.
+
+Create a notification bell showing unread notifications.
+
+==================================================
+7. STATISTICS & REPORTS
+
+Automatically calculate:
+
+Player Statistics:
+
+* Matches Played
+* Wins
+* Draws
+* Losses
+* Goals Scored
+* Goals Conceded
+* Goal Difference
+* Win Percentage
+* Form Guide
+
+League Statistics:
+
+* Top Scorers
+* Best Defence
+* Most Wins
+* Longest Win Streak
+* Clean Sheets
+* Fair Play Ranking
+
+==================================================
+8. EXPORT SYSTEM
+
+Allow exporting:
+
+* League Table to PDF.
+* League Table to Excel.
+* Fixtures to PDF.
+* Fixtures to Excel.
+* Player Statistics to PDF.
+* Season Report to PDF.
+
+==================================================
+9. FINAL QUALITY ASSURANCE
+
+Before completing:
+
+* Audit the entire project.
+* Remove duplicate code.
+* Remove unused files.
+* Remove broken imports.
+* Fix every TypeScript error.
+* Fix every build error.
+* Verify Firebase integration.
+* Verify Firestore reads and writes.
+* Verify Storage uploads.
+* Verify Authentication.
+* Verify all dashboards.
+* Verify fixtures.
+* Verify standings.
+* Verify payment workflow.
+* Verify mobile responsiveness.
+* Verify desktop responsiveness.
+* Ensure the project builds successfully.
+
+Generate a final report containing:
+
+1. Features completed.
+2. Files modified.
+3. Files created.
+4. Remaining issues (if any).
+
+Do not stop until every item above has been fully implemented, tested, and integrated into the existing project without breaking existing functionality.
