@@ -127,32 +127,26 @@ export default function Leagues() {
         toast({ title: "League full", description: "All slots are taken.", variant: "destructive" }); return;
       }
 
-      // Payment gate?
-      if (leagueData.requiresPayment) {
-        // Check if already submitted a payment
-        const existingPayment = myPayments.find(p => p.leagueId === leagueData.id);
-        if (existingPayment) {
-          toast({
-            title: `Payment ${existingPayment.status}`,
-            description: existingPayment.status === "pending"
-              ? "Your payment is under review. Wait for admin approval."
-              : existingPayment.status === "approved"
-              ? "Already approved — contact admin if you can't access the league."
-              : "Payment was rejected or requires resubmission.",
-          });
-          setIsJoinOpen(false); return;
-        }
-        // Show payment dialog
-        setPendingLeague(leagueData);
-        setIsJoinOpen(false);
-        setTxCode(""); setTxPhone(""); setTxAmount(String(leagueData.entryFee ?? ""));
-        return;
+      // Check if already submitted a payment for this league
+      const existingPayment = myPayments.find(p => p.leagueId === leagueData.id);
+      if (existingPayment) {
+        const statusMsg: Record<string, string> = {
+          pending: "Your payment is under review. You'll be notified once the admin approves it.",
+          approved: "Payment already approved. Contact the admin if you still can't access the league.",
+          rejected: "Your payment was rejected. Please resubmit with the correct transaction code.",
+          resubmit: "Admin has requested you resubmit your payment details.",
+        };
+        toast({
+          title: `Payment ${existingPayment.status}`,
+          description: statusMsg[existingPayment.status] ?? "Contact the admin for details.",
+        });
+        setIsJoinOpen(false); return;
       }
 
-      // No payment required — join directly
-      await updateDoc(doc(db, "leagues", leagueDoc.id), { memberUids: arrayUnion(user.uid) });
-      setIsJoinOpen(false); setJoinCode("");
-      toast({ title: `Joined "${leagueData.name}" successfully!` });
+      // Always require M-Pesa payment before joining
+      setPendingLeague(leagueData);
+      setIsJoinOpen(false);
+      setTxCode(""); setTxPhone(""); setTxAmount(leagueData.entryFee ? String(leagueData.entryFee) : "");
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {

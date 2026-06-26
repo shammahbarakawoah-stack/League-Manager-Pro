@@ -33,9 +33,21 @@ export default function Login() {
       await signIn(values.email, values.password);
       setLocation("/");
     } catch (error: any) {
+      const code = error?.code ?? "";
+      const friendlyMessage =
+        code === "auth/invalid-credential" ||
+        code === "auth/user-not-found" ||
+        code === "auth/wrong-password" ||
+        code === "auth/invalid-email"
+          ? "Invalid email or password. Please check your details and try again."
+          : code === "auth/too-many-requests"
+          ? "Too many failed attempts. Please wait a few minutes and try again."
+          : code === "auth/network-request-failed"
+          ? "Network error. Check your connection and try again."
+          : "Sign in failed. Please try again.";
       toast({
         title: "Login failed",
-        description: error.message,
+        description: friendlyMessage,
         variant: "destructive",
       });
     } finally {
