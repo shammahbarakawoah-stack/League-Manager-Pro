@@ -39,9 +39,7 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    outDir: isReplit
-      ? path.resolve(import.meta.dirname, "dist")
-      : path.resolve(import.meta.dirname, "..", "..", "dist"),
+    outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
   },
   server: {
